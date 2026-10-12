@@ -1,0 +1,4 @@
+# Only the text of the post-install hint mentions systemctl; nothing is executed.
+vrcontroller: maintainer-script-calls-systemctl [postinst:*]
+# The rule grants access to /dev/uinput (virtual devices), not to a specific hardware ID.
+vrcontroller: appstream-metadata-missing-modalias-provide usr/lib/udev/rules.d/60-vrcontroller.rules

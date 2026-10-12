@@ -1,0 +1,2 @@
+# Let the user logged in at the local seat create virtual input devices (vrcontroller).
+KERNEL=="uinput", MODE="0660", TAG+="uaccess", OPTIONS+="static_node=uinput"

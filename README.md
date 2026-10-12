@@ -29,36 +29,28 @@ Turn the controller's inputs into system input events, for example:
 Touchpad and buttons work as mouse and keys through a uinput daemon. Gyro "air mouse"
 pointing is planned. BLE protocol notes: `doc/protocol.md`.
 
-## Setup
-
-1. Pair the controller (hold home until the LED blinks):
-   `bluetoothctl` → `scan on` → `pair <MAC>` → `trust <MAC>`.
-2. Allow your user to create virtual input devices (one-time, needs sudo):
-   ```
-   echo 'KERNEL=="uinput", MODE="0660", TAG+="uaccess", OPTIONS+="static_node=uinput"' \
-     | sudo tee /etc/udev/rules.d/60-uinput.rules
-   sudo udevadm control --reload
-   sudo modprobe uinput && echo uinput | sudo tee /etc/modules-load.d/uinput.conf
-   ```
-   The module must be loaded for the rule to apply; `/dev/uinput` exists even when it is not.
-3. Python environment:
-   ```
-   python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-   ```
-
-## Usage
+## Install (Debian 13 package)
 
 ```
-.venv/bin/python -m vrcontroller          # finds the paired controller by name
-.venv/bin/python -m vrcontroller -v       # debug logging
+sudo apt install dh-python pybuild-plugin-pyproject python3-all python3-pytest \
+    python3-bleak python3-evdev python3-dbus-fast        # build dependencies
+dpkg-buildpackage -us -uc -b                             # builds ../vrcontroller_0.1.0_all.deb
+sudo apt install ../vrcontroller_0.1.0_all.deb
 ```
 
-If the controller is asleep the daemon keeps scanning; press home to wake it.
+The package installs the daemon (`/usr/bin/vrcontroller`), a udev rule giving the logged-in
+user access to `/dev/uinput`, uinput module autoload, and a systemd user unit that is enabled
+for everyone and starts with the graphical session. Start it right away with
+`systemctl --user start vrcontroller`; logs: `journalctl --user -u vrcontroller -f`.
+
+Pairing is automatic: hold home until the LED blinks and the daemon pairs the first
+Gear VR Controller it hears (disable with `[device] auto_pair = false`). It also pairs again
+when the controller has forgotten the pairing. Manual (re)pairing: `vrcontroller pair`.
+
 Live status (connection, battery, buttons, touchpad, IMU, emitted events, raw packet):
 <http://127.0.0.1:8765/> (`--status-port 0` disables it).
 
-If it connects but drops during service discovery every time, the controller has lost
-its pairing: `bluetoothctl remove <MAC>`, then pair again (step 1).
+## Configuration
 
 Default mapping:
 
@@ -71,21 +63,32 @@ Default mapping:
 | Home | Super |
 | Vol+ / Vol− | volume up / down |
 
-Change any of this in `~/.config/vrcontroller/config.toml`; see `config.example.toml`
-for every key. Restart the daemon after editing.
+Change any of this in `~/.config/vrcontroller/config.toml`; every key is documented in
+`config.example.toml` (installed as `/usr/share/doc/vrcontroller/examples/`).
+Restart after editing: `systemctl --user restart vrcontroller`.
 
-### Autostart
+## Development (venv)
 
 ```
-mkdir -p ~/.config/systemd/user
-cp systemd/vrcontroller.service ~/.config/systemd/user/
-systemctl --user daemon-reload && systemctl --user enable --now vrcontroller
-journalctl --user -u vrcontroller -f
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/python -m vrcontroller -v
 ```
 
-The unit assumes the repo is in `~/Workspace/gitlab/ai/samsung-vr-controller`.
+Without the package, set up `/dev/uinput` access by hand (once, needs sudo):
+```
+echo 'KERNEL=="uinput", MODE="0660", TAG+="uaccess", OPTIONS+="static_node=uinput"' \
+  | sudo tee /etc/udev/rules.d/60-uinput.rules
+sudo udevadm control --reload
+sudo modprobe uinput && echo uinput | sudo tee /etc/modules-load.d/uinput.conf
+```
+The module must be loaded for the rule to apply; `/dev/uinput` exists even when it is not.
 
 ## Tools and tests
 
 - `tools/dump.py` prints raw and decoded packets (`--log FILE` saves them).
 - Tests: `.venv/bin/pip install -r requirements-dev.txt && .venv/bin/python -m pytest`
+  (they also run during `dpkg-buildpackage`, against Debian's library versions)
+
+## License
+
+MIT, see `LICENSE`.

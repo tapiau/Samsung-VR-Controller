@@ -1,0 +1,39 @@
+Source: vrcontroller
+Section: utils
+Priority: optional
+Maintainer: Zbigniew Jarosik <zibi@nora.pl>
+Build-Depends: debhelper-compat (= 13),
+               dh-python,
+               dh-sequence-python3,
+               pybuild-plugin-pyproject,
+               python3-all,
+               python3-setuptools (>= 77),
+               python3-pytest <!nocheck>,
+               python3-bleak <!nocheck>,
+               python3-evdev <!nocheck>,
+               python3-dbus-fast <!nocheck>,
+Standards-Version: 4.7.2
+Rules-Requires-Root: no
+Homepage: https://gitlab.v.nora.pl/ai/samsung-vr-controller
+
+Package: vrcontroller
+Architecture: all
+Depends: ${misc:Depends},
+         ${python3:Depends},
+         python3-bleak,
+         python3-evdev,
+         python3-dbus-fast,
+         bluez,
+         kmod,
+Description: Samsung Gear VR Controller as mouse and keyboard
+ A user-level daemon that connects to a Samsung Gear VR Controller over
+ Bluetooth Low Energy and turns it into a virtual input device: the
+ touchpad moves the pointer and scrolls, the buttons act as mouse buttons
+ and keys. The mapping is configurable in ~/.config/vrcontroller/config.toml.
+ .
+ The daemon pairs the controller automatically and serves a live status
+ page on http://127.0.0.1:8765/.
+ .
+ The package adds a udev rule that lets the user logged in at the local
+ seat create virtual input devices through /dev/uinput, and loads the
+ uinput module at boot.

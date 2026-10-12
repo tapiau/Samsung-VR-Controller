@@ -2,6 +2,12 @@
 # Copy to ~/.config/vrcontroller/config.toml and keep only the keys you change;
 # everything not set here uses the default shown.
 
+[device]
+# Pair automatically when no controller is paired, and pair again when the controller
+# has forgotten the pairing. Takes the first "Gear VR Controller" it hears, so in range of
+# someone else's unpaired controller set this to false and use `vrcontroller pair`.
+auto_pair = true
+
 [pointer]
 speed = 1.0            # multiplier; at 1.0 a full swipe across the pad moves ~750 px
 acceleration = 1.0     # 1.0 = linear; higher = fast swipes travel further (try 1.3)

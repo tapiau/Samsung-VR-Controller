@@ -1,0 +1,6 @@
+vrcontroller (0.1.0) unstable; urgency=medium
+
+  * Initial release: uinput daemon with configurable mapping, automatic
+    pairing, `vrcontroller pair`, live status page.
+
+ -- Zbigniew Jarosik <zibi@nora.pl>  Mon, 12 Oct 2026 17:55:00 +0200

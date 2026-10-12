@@ -1,3 +1,14 @@
 .venv/
+.venv-trixie/
 __pycache__/
 *.log
+*.egg-info/
+build/
+.pybuild/
+debian/.debhelper/
+debian/vrcontroller/
+debian/files
+debian/*.substvars
+debian/debhelper-build-stamp
+debian/*.debhelper
+debian/*.debhelper.log

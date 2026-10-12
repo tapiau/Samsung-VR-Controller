@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=77"]  # SPDX "license" string
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vrcontroller"
+version = "0.1.0"
+description = "Use a Samsung Gear VR Controller as mouse and keyboard on Linux"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = ["bleak>=0.22", "evdev>=1.6", "dbus-fast>=2.0"]
+
+[project.scripts]
+vrcontroller = "vrcontroller.__main__:cli"
+
+[tool.setuptools]
+packages = ["vrcontroller"]
+
+[tool.setuptools.package-data]
+vrcontroller = ["status.html"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

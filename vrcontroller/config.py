@@ -9,6 +9,7 @@ from evdev import ecodes
 from .protocol import BUTTON_NAMES
 
 DEFAULTS = {
+    "device": {"auto_pair": True},
     "pointer": {"speed": 1.0, "acceleration": 1.0, "smoothing": 0.5},
     "scroll": {"speed": 1.0, "natural": False, "modifier": "back"},
     "buttons": {
@@ -28,6 +29,7 @@ class ConfigError(ValueError):
 
 @dataclass(frozen=True)
 class Config:
+    auto_pair: bool = True
     pointer_speed: float = 1.0
     pointer_acceleration: float = 1.0
     pointer_smoothing: float = 0.5
@@ -92,6 +94,7 @@ def build(overrides: dict) -> Config:
     if m["pointer"]["acceleration"] < 1:
         raise ConfigError("pointer.acceleration must be >= 1.0")
     return Config(
+        auto_pair=m["device"]["auto_pair"],
         pointer_speed=m["pointer"]["speed"],
         pointer_acceleration=m["pointer"]["acceleration"],
         pointer_smoothing=m["pointer"]["smoothing"],

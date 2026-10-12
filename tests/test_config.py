@@ -13,6 +13,11 @@ def test_defaults():
     assert c.pointer_speed == 1.0
 
 
+def test_auto_pair_default_and_override():
+    assert build({}).auto_pair is True
+    assert build({"device": {"auto_pair": False}}).auto_pair is False
+
+
 def test_override_merges_over_defaults():
     c = build({"scroll": {"modifier": "click"}, "pointer": {"speed": 2}})
     assert c.scroll_modifier == "click"

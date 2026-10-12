@@ -6,50 +6,34 @@ from collections import deque
 from typing import Optional
 
 from bleak import BleakClient, BleakScanner
-from bleak.backends.device import BLEDevice
 from bleak.exc import BleakDeviceNotFoundError, BleakError
-from dbus_fast import BusType
-from dbus_fast.aio import MessageBus
 from evdev import UInput, ecodes
 
-from . import protocol
+from . import bluez, protocol
 from .config import Config
 from .mapper import Mapper
 
 log = logging.getLogger("vrcontroller")
 
-DEVICE_NAME_PREFIX = "Gear VR Controller"
 CONNECT_TIMEOUT = 20.0
 SCAN_TIMEOUT = 30.0  # per scan; the loop keeps scanning until home wakes the controller
 RETRY_DELAY = 2.0
 KEEPALIVE_INTERVAL = 1.0
 BATTERY_UUID = "00002a19-0000-1000-8000-00805f9b34fb"
+# Connected, then dropped while BlueZ reads the services: the controller rejected our stored key,
+# i.e. it forgot the pairing. After this many in a row, pair again (if auto_pair is on).
+LOST_BOND_ATTEMPTS = 3
+LOST_BOND_MESSAGE = "failed to discover services"
 
 
-async def bluez_devices() -> dict[str, dict]:
-    """BlueZ Device1 properties keyed by object path."""
-    bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
-    try:
-        intro = await bus.introspect("org.bluez", "/")
-        manager = bus.get_proxy_object("org.bluez", "/", intro).get_interface(
-            "org.freedesktop.DBus.ObjectManager")
-        objects = await manager.call_get_managed_objects()
-    finally:
-        bus.disconnect()
-    return {path: {k: v.value for k, v in ifaces["org.bluez.Device1"].items()}
-            for path, ifaces in objects.items() if "org.bluez.Device1" in ifaces}
+def stopping() -> bool:
+    """True once the task was cancelled (SIGINT/SIGTERM).
 
-
-async def find_controller() -> Optional[tuple[str, str]]:
-    """Return (address, BlueZ path) of the first paired Gear VR Controller."""
-    for path, dev in sorted((await bluez_devices()).items()):
-        if dev.get("Paired") and dev.get("Name", "").startswith(DEVICE_NAME_PREFIX):
-            return dev["Address"], path
-    return None
-
-
-async def is_connected(path: str) -> bool:
-    return bool((await bluez_devices()).get(path, {}).get("Connected"))
+    Cleanup code in bleak/dbus-fast can replace the CancelledError with another error
+    (seen: EOFError while disconnecting), so retry loops must check this before retrying.
+    """
+    task = asyncio.current_task()
+    return task is not None and task.cancelling() > 0
 
 
 def event_name(etype: int, code: int) -> str:
@@ -133,10 +117,10 @@ class Daemon:
         """One connection: start the stream, keep it alive until disconnect."""
         disconnected = asyncio.Event()
         self.state = "connecting"
-        if await is_connected(self.path):
+        if await bluez.is_connected(self.path):
             # Already connected (e.g. by bluetoothctl): it does not advertise, so a scan
             # would never find it. Use the BlueZ object directly.
-            device = BLEDevice(self.address, None, {"path": self.path})
+            device = bluez.ble_device(self.address, self.path)
         else:
             # Asleep or just woken: BlueZ only connects after it has seen an advert.
             self.state = "scanning (press home to wake the controller)"
@@ -164,15 +148,36 @@ class Daemon:
         self.state = "disconnected"
         log.info("disconnected")
 
+    async def repair(self) -> None:
+        """The controller forgot the pairing: remove ours and pair again."""
+        log.warning("controller keeps dropping the connection during setup; "
+                    "it probably lost the pairing, pairing again")
+        self.state = "pairing again (controller lost the pairing)"
+        found = await bluez.pair_controller(bluez.PAIR_SCAN_TIMEOUT, remove_paths=(self.path,))
+        if found:
+            self.address, self.path = found
+
     async def run(self) -> None:
         waiting_logged = False
+        lost_bond = 0
         reporter = asyncio.create_task(self.report())
         try:
             while True:
                 try:
                     await self.session()
                     waiting_logged = False
-                except (BleakError, asyncio.TimeoutError, EOFError, OSError) as ex:
+                    lost_bond = 0
+                except (BleakError, asyncio.TimeoutError, EOFError, OSError, bluez.BluezError) as ex:
+                    if stopping():
+                        raise asyncio.CancelledError from ex
+                    lost_bond = lost_bond + 1 if LOST_BOND_MESSAGE in str(ex) else 0
+                    if lost_bond >= LOST_BOND_ATTEMPTS and self.config.auto_pair:
+                        lost_bond = 0
+                        try:
+                            await self.repair()
+                        except (BleakError, bluez.BluezError) as e:
+                            log.warning("pairing again failed: %s", e)
+                        continue
                     level = logging.DEBUG if waiting_logged else logging.INFO
                     log.log(level, "controller not reachable (%s: %s); press home to wake it",
                             type(ex).__name__, ex)

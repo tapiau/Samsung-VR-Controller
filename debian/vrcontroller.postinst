@@ -1,0 +1,23 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "configure" ]; then
+    # Make /dev/uinput usable now, without a reboot: load the module and apply the udev rule.
+    if [ -d /run/udev ]; then
+        udevadm control --reload-rules || true
+    fi
+    modprobe uinput 2>/dev/null || true
+    if [ -d /run/udev ]; then
+        udevadm trigger --subsystem-match=misc --sysname-match=uinput || true
+    fi
+    cat <<'MSG'
+vrcontroller: the daemon starts with your next graphical login, or right now with
+  systemctl --user start vrcontroller
+Hold home on the controller until the LED blinks; it is paired automatically.
+Status page: http://127.0.0.1:8765/   Manual (re)pairing: vrcontroller pair
+MSG
+fi
+
+#DEBHELPER#
+
+exit 0

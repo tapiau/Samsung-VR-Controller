@@ -1,0 +1,16 @@
+[Unit]
+Description=Samsung Gear VR Controller as mouse and keyboard
+Documentation=file:///usr/share/doc/vrcontroller/README.md
+# Only in graphical sessions: elsewhere (e.g. SSH) /dev/uinput isn't accessible.
+PartOf=graphical-session.target
+After=graphical-session.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+ExecStart=/usr/bin/vrcontroller
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=graphical-session.target

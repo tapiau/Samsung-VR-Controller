@@ -1,0 +1,59 @@
+.TH VRCONTROLLER 1 "2026-10-12" "vrcontroller 0.1.0" "User Commands"
+.SH NAME
+vrcontroller \- use a Samsung Gear VR Controller as mouse and keyboard
+.SH SYNOPSIS
+.B vrcontroller
+.RB [ run | pair ]
+.RB [ \-\-config
+.IR path ]
+.RB [ \-\-mac
+.IR address ]
+.RB [ \-\-status\-port
+.IR port ]
+.RB [ \-\-timeout
+.IR seconds ]
+.RB [ \-v ]
+.SH DESCRIPTION
+.B vrcontroller run
+(the default) connects to a paired Gear VR Controller over Bluetooth Low Energy and
+replays its touchpad and buttons as a virtual input device through
+.IR /dev/uinput .
+When no controller is paired it pairs the first one that advertises (see
+.B auto_pair
+below), and it pairs again when the controller has forgotten the pairing.
+It normally runs as the systemd user unit
+.BR vrcontroller.service ,
+started with the graphical session.
+.PP
+.B vrcontroller pair
+forgets any existing pairing of a Gear VR Controller and pairs the one that is in pairing
+mode (hold home until the LED blinks).
+.SH OPTIONS
+.TP
+.BI \-\-config " path"
+Configuration file (default:
+.IR ~/.config/vrcontroller/config.toml ).
+.TP
+.BI \-\-mac " address"
+Use this controller instead of looking up the first paired one.
+.TP
+.BI \-\-status\-port " port"
+Port of the local status page on 127.0.0.1 (default 8765, 0 disables it).
+.TP
+.BI \-\-timeout " seconds"
+For
+.BR pair :
+how long to wait for the controller (default 60).
+.TP
+.BR \-v ", " \-\-verbose
+Debug logging.
+.SH FILES
+.TP
+.I ~/.config/vrcontroller/config.toml
+Mapping, pointer and scroll settings, and
+.BR auto_pair .
+All keys are documented in
+.IR /usr/share/doc/vrcontroller/examples/config.example.toml .
+.SH SEE ALSO
+.BR bluetoothctl (1),
+.I /usr/share/doc/vrcontroller/README.md

@@ -1,0 +1,9 @@
+#!/usr/bin/make -f
+
+export PYBUILD_NAME=vrcontroller
+# Run the tests from the source tree (they read config.example.toml) against the built package.
+export PYBUILD_TEST_PYTEST=1
+export PYBUILD_TEST_ARGS={dir}/tests
+
+%:
+	dh $@ --buildsystem=pybuild

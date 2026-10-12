@@ -10,19 +10,9 @@ import time
 from pathlib import Path
 
 from bleak import BleakClient
-from bleak.backends.device import BLEDevice
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from vrcontroller import protocol  # noqa: E402
-
-def bluez_device(mac: str) -> BLEDevice:
-    """Address the device by its BlueZ object path, so bleak skips scanning.
-
-    A paired controller that is already connected does not advertise, so the
-    scan bleak normally runs before connecting would never find it.
-    """
-    return BLEDevice(mac, None, {"path": protocol.bluez_path(mac)})
-
+from vrcontroller import bluez, protocol  # noqa: E402
 
 def describe(b: bytes) -> str:
     if len(b) != protocol.PACKET_LEN:
@@ -49,7 +39,7 @@ async def main(args):
             print(f"{t:7.3f} [{len(data)}] {data.hex()}")
             print(f"        {describe(bytes(data))}")
 
-    async with BleakClient(bluez_device(args.mac)) as client:
+    async with BleakClient(bluez.ble_device(args.mac, protocol.bluez_path(args.mac))) as client:
         print(f"connected to {args.mac}")
         await client.start_notify(protocol.DATA_UUID, on_data)
         for cmd in args.cmd:
