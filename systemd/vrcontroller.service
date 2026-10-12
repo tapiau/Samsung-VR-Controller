@@ -1,0 +1,13 @@
+[Unit]
+Description=Samsung Gear VR Controller as system input
+After=bluetooth.target
+
+[Service]
+# %h = home directory; adjust if the repo lives elsewhere.
+WorkingDirectory=%h/Workspace/gitlab/ai/samsung-vr-controller
+ExecStart=%h/Workspace/gitlab/ai/samsung-vr-controller/.venv/bin/python -m vrcontroller
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

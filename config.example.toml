@@ -1,0 +1,26 @@
+# Gear VR Controller daemon configuration.
+# Copy to ~/.config/vrcontroller/config.toml and keep only the keys you change;
+# everything not set here uses the default shown.
+
+[pointer]
+speed = 1.0            # multiplier; at 1.0 a full swipe across the pad moves ~750 px
+acceleration = 1.0     # 1.0 = linear; higher = fast swipes travel further (try 1.3)
+smoothing = 0.5        # 0.0 = raw (jerky), up to 0.9 = very smooth but laggy
+
+[scroll]
+speed = 1.0
+natural = false        # true = content follows the finger, like a phone
+# Hold this button and slide on the touchpad to scroll. A short press without
+# sliding still sends the button's own action.
+# One of: trigger, click, back, home, vol_up, vol_down
+modifier = "back"
+
+[buttons]
+# evdev names (KEY_* / BTN_*, see /usr/include/linux/input-event-codes.h),
+# "KEY_LEFTCTRL+KEY_C" for a combination, or "none" to disable.
+trigger  = "BTN_LEFT"
+click    = "BTN_RIGHT"
+back     = "KEY_BACK"
+home     = "KEY_LEFTMETA"
+vol_up   = "KEY_VOLUMEUP"
+vol_down = "KEY_VOLUMEDOWN"

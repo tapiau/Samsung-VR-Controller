@@ -1,5 +1,5 @@
 # Gear VR Controller BLE protocol
-**Created:** 2026-10-12 17:05
+**Created:** 2026-10-12 16:53
 
 Verified on ET-YO324 (firmware `YO324XXU0AQD4`, MAC `2C:BA:BA:5E:1B:6C`) with `tools/dump.py`.
 Raw captures: `rest.log`, `buttons.log`, `ytest.log` (gitignored, local only).

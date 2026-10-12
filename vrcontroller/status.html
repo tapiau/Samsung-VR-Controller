@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VR Controller Status</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #6b7385; --line: #e2e5eb;
+    --accent: #2f6fde; --on: #1f9d55; --warn: #c27c0e; --bad: #c8372d;
+    --x: #d9480f; --y: #2b8a3e; --z: #1c7ed6; --pad: #eef1f6;
+    --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12151b; --card: #1b1f27; --text: #e6e9ef; --muted: #8a93a6; --line: #2a303b;
+      --accent: #6aa0ff; --on: #3ccf7f; --warn: #e3a33b; --bad: #ff6b5f;
+      --x: #ff8a4c; --y: #5fd07a; --z: #5aaeff; --pad: #232936;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12151b; --card: #1b1f27; --text: #e6e9ef; --muted: #8a93a6; --line: #2a303b;
+    --accent: #6aa0ff; --on: #3ccf7f; --warn: #e3a33b; --bad: #ff6b5f;
+    --x: #ff8a4c; --y: #5fd07a; --z: #5aaeff; --pad: #232936;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center;
+           padding: 16px; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  .stat { color: var(--muted); }
+  .stat b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .pill { padding: 3px 10px; border-radius: 999px; font-weight: 600; font-size: 13px;
+          background: var(--line); }
+  .pill.ok { background: color-mix(in srgb, var(--on) 18%, transparent); color: var(--on); }
+  .pill.wait { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+  .pill.bad { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); }
+  main { display: grid; gap: 16px; padding: 16px; max-width: 1200px; margin: 0 auto;
+         grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+            padding: 14px 16px; min-width: 0; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+       margin: 0 0 12px; font-weight: 600; }
+  .touch-wrap { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  svg.pad { width: 220px; height: 220px; flex: none; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-variant-numeric: tabular-nums; }
+  .kv dt { color: var(--muted); } .kv dd { margin: 0; font-family: var(--mono); }
+  .buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .btn { border: 1px solid var(--line); border-radius: 8px; padding: 10px 8px; text-align: center;
+         transition: background .05s, border-color .05s; }
+  .btn .name { font-weight: 600; }
+  .btn .map { color: var(--muted); font-size: 12px; font-family: var(--mono); word-break: break-all; }
+  .btn.down { background: color-mix(in srgb, var(--accent) 22%, transparent); border-color: var(--accent); }
+  .btn .tag { font-size: 11px; color: var(--accent); }
+  .axes { display: grid; grid-template-columns: 52px 1fr 64px; gap: 6px 10px; align-items: center;
+          font-variant-numeric: tabular-nums; }
+  .axes .lbl { color: var(--muted); }
+  .axes .val { font-family: var(--mono); text-align: right; }
+  .bar { position: relative; height: 10px; background: var(--pad); border-radius: 5px; overflow: hidden; }
+  .bar::after { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--muted); opacity: .5; }
+  .bar i { position: absolute; top: 0; bottom: 0; border-radius: 5px; }
+  .group { margin-top: 14px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  canvas { width: 100%; height: 90px; display: block; margin-top: 8px; }
+  .legend { display: flex; gap: 12px; font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .legend span::before { content: ""; display: inline-block; width: 10px; height: 3px; margin-right: 5px;
+                         vertical-align: middle; background: var(--c); }
+  .events { font-family: var(--mono); font-size: 12.5px; max-height: 290px; overflow: auto; margin: 0;
+            padding: 0; list-style: none; }
+  .events li { display: grid; grid-template-columns: 92px 1fr 48px; gap: 8px; padding: 2px 0;
+               border-bottom: 1px dashed var(--line); }
+  .events .t { color: var(--muted); } .events .v { text-align: right; }
+  .empty { color: var(--muted); font-style: italic; }
+  .raw { font-family: var(--mono); font-size: 12.5px; display: grid;
+         grid-template-columns: repeat(auto-fill, minmax(2.6ch, 1fr)); gap: 2px 6px; }
+  .raw span.hl { color: var(--accent); font-weight: 700; }
+  .raw-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+  .wide { grid-column: 1 / -1; }
+  @media (max-width: 420px) {
+    main { grid-template-columns: 1fr; padding: 16px; }
+    svg.pad { width: 100%; height: auto; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Gear VR Controller</h1>
+  <span id="state" class="pill">connecting to daemon…</span>
+  <span class="stat">address <b id="addr">–</b></span>
+  <span class="stat">battery <b id="battery">–</b></span>
+  <span class="stat">packets <b id="rate">–</b>/s</span>
+</header>
+<main>
+  <section>
+    <h2>Touchpad</h2>
+    <div class="touch-wrap">
+      <svg class="pad" viewBox="-10 -10 335 335" aria-label="touchpad position">
+        <circle cx="157" cy="160" r="158" fill="var(--pad)" stroke="var(--line)" stroke-width="2"/>
+        <line x1="157" y1="2" x2="157" y2="318" stroke="var(--line)"/>
+        <line x1="-1" y1="160" x2="315" y2="160" stroke="var(--line)"/>
+        <polyline id="trail" fill="none" stroke="var(--accent)" stroke-opacity=".45" stroke-width="4"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+        <circle id="dot" r="13" fill="var(--accent)" visibility="hidden"/>
+      </svg>
+      <dl class="kv">
+        <dt>finger</dt><dd id="finger">–</dd>
+        <dt>x</dt><dd id="tx">–</dd>
+        <dt>y</dt><dd id="ty">–</dd>
+        <dt>scroll</dt><dd id="mod">–</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section>
+    <h2>Buttons</h2>
+    <div class="buttons" id="buttons"></div>
+  </section>
+
+  <section>
+    <h2>Motion (IMU)</h2>
+    <div class="axes" id="accel"></div>
+    <div class="group">gyroscope</div>
+    <div class="axes" id="gyro"></div>
+    <div class="group">magnetometer</div>
+    <div class="axes" id="mag"></div>
+    <canvas id="chart" width="600" height="90" aria-label="gyroscope history"></canvas>
+    <div class="legend">
+      <span style="--c: var(--x)">gyro x</span><span style="--c: var(--y)">gyro y</span>
+      <span style="--c: var(--z)">gyro z</span><span>last 6 s</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Events sent to the system</h2>
+    <ul class="events" id="events"><li class="empty">none yet</li></ul>
+  </section>
+
+  <section class="wide">
+    <h2>Raw packet</h2>
+    <div class="raw" id="raw"></div>
+    <div class="raw-note">Highlighted: bytes 54–59 (touchpad and buttons). See doc/protocol.md.</div>
+  </section>
+</main>
+<script>
+const BUTTONS = [["trigger", "Trigger"], ["click", "Pad click"], ["back", "Back"],
+                 ["home", "Home"], ["vol_up", "Vol +"], ["vol_down", "Vol −"]];
+const $ = id => document.getElementById(id);
+
+$("buttons").innerHTML = BUTTONS.map(([k, label]) =>
+  `<div class="btn" id="b-${k}"><div class="name">${label}</div><div class="map" id="m-${k}">–</div></div>`).join("");
+
+function axes(el, labels, scale) {
+  el.innerHTML = labels.map((l, i) =>
+    `<span class="lbl">${l}</span><div class="bar"><i id="${el.id}-${i}"></i></div><span class="val" id="${el.id}-v${i}">–</span>`
+  ).join("");
+  return (values, fmt = v => v) => values.forEach((v, i) => {
+    const f = Math.max(-1, Math.min(1, v / scale)) * 50;
+    const bar = $(`${el.id}-${i}`);
+    bar.style.left = (f < 0 ? 50 + f : 50) + "%";
+    bar.style.width = Math.abs(f) + "%";
+    bar.style.background = `var(--${"xyz"[i]})`;
+    $(`${el.id}-v${i}`).textContent = fmt(v);
+  });
+}
+const setAccel = axes($("accel"), ["acc x", "acc y", "acc z"], 4096);
+const setGyro = axes($("gyro"), ["x", "y", "z"], 2000);
+const setMag = axes($("mag"), ["x", "y", "z"], 8000);
+
+const trail = [];
+const history = [];
+const chart = $("chart"), ctx = chart.getContext("2d");
+let lastEventsKey = "";
+
+function drawChart() {
+  const dpr = window.devicePixelRatio || 1;
+  const w = chart.clientWidth, h = chart.clientHeight;
+  if (chart.width !== w * dpr) { chart.width = w * dpr; chart.height = h * dpr; }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const css = getComputedStyle(document.documentElement);
+  ctx.strokeStyle = css.getPropertyValue("--line"); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
+  const max = Math.max(200, ...history.flat().map(Math.abs));
+  ["--x", "--y", "--z"].forEach((c, axis) => {
+    ctx.strokeStyle = css.getPropertyValue(c); ctx.lineWidth = 1.5; ctx.beginPath();
+    history.forEach((g, i) => {
+      const x = i / 119 * w, y = h / 2 - g[axis] / max * (h / 2 - 4);
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.stroke();
+  });
+}
+
+function update(s) {
+  const st = $("state");
+  st.textContent = s.state;
+  st.className = "pill " + (s.state === "connected" ? "ok" : s.state.startsWith("not") ? "bad" : "wait");
+  $("addr").textContent = s.address;
+  $("battery").textContent = s.battery == null ? "–" : s.battery + " %";
+  $("rate").textContent = s.rate;
+  $("mod").textContent = `hold ${s.config.scroll_modifier} + slide`;
+
+  for (const [k] of BUTTONS) {
+    const codes = s.config.buttons[k];
+    const isMod = k === s.config.scroll_modifier;
+    $(`m-${k}`).innerHTML = (codes.length ? codes.join("+") : "none") +
+      (isMod ? '<div class="tag">tap · hold+slide scrolls</div>' : "");
+  }
+
+  const p = s.packet;
+  if (!p) return;
+  for (const [k] of BUTTONS) $(`b-${k}`).classList.toggle("down", p.buttons.includes(k));
+
+  const dot = $("dot");
+  if (p.touch) {
+    const [x, y] = p.touch;
+    dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.setAttribute("visibility", "visible");
+    trail.push(`${x},${y}`); if (trail.length > 40) trail.shift();
+    $("finger").textContent = "down"; $("tx").textContent = x; $("ty").textContent = y;
+  } else {
+    dot.setAttribute("visibility", "hidden"); trail.length = 0;
+    $("finger").textContent = "up"; $("tx").textContent = "–"; $("ty").textContent = "–";
+  }
+  $("trail").setAttribute("points", trail.join(" "));
+
+  const a = p.imu[0].accel;
+  setAccel(a);
+  const g = p.imu[0].gyro;
+  setGyro(g);
+  setMag(p.mag);
+  history.push(g); if (history.length > 120) history.shift();
+  drawChart();
+
+  const key = s.events.length ? s.events[s.events.length - 1].join() + s.events.length : "";
+  if (key !== lastEventsKey) {
+    lastEventsKey = key;
+    $("events").innerHTML = s.events.length ? s.events.slice().reverse().map(([t, name, v]) => {
+      const d = new Date(t * 1000);
+      const ts = d.toLocaleTimeString([], {hour12: false}) + "." + String(d.getMilliseconds()).padStart(3, "0");
+      return `<li><span class="t">${ts}</span><span>${name}</span><span class="v">${v}</span></li>`;
+    }).join("") : '<li class="empty">none yet</li>';
+  }
+
+  const bytes = p.raw.match(/../g) || [];
+  $("raw").innerHTML = bytes.map((b, i) =>
+    `<span class="${i >= 54 ? "hl" : ""}" title="byte ${i}">${b}</span>`).join("");
+}
+
+let frame = null, latest = null;
+function connect() {
+  const es = new EventSource("/events");
+  es.onmessage = e => {
+    latest = JSON.parse(e.data);
+    if (!frame) frame = requestAnimationFrame(() => { frame = null; update(latest); });
+  };
+  es.onerror = () => {
+    $("state").textContent = "daemon not reachable"; $("state").className = "pill bad";
+  };
+}
+connect();
+</script>
+</body>
+</html>
